@@ -7,7 +7,10 @@ button_menu = KeyboardButton('/Menu')
 
 kb_client = ReplyKeyboardMarkup(resize_keyboard=True)
 
-kb_client.add(button_menu).add(button_contacts).insert(button_help)
+kb_client.\
+    add(button_menu).\
+    add(button_contacts).\
+    insert(button_help)
 
 # button_menu
 button_search_number_request = KeyboardButton('/Search_result')
@@ -17,7 +20,8 @@ button_back = KeyboardButton('/Back')
 
 kb_button_menu = ReplyKeyboardMarkup(resize_keyboard=True)
 
-kb_button_menu.add(button_search_number_request).\
+kb_button_menu.\
+    add(button_search_number_request).\
     insert(button_search_by_date).\
     add(button_search_number_request_full_info).\
     add(button_back)

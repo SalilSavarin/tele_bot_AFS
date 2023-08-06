@@ -1,3 +1,5 @@
+import datetime
+
 import pandas as pd
 import pandasql as ps
 
@@ -10,6 +12,8 @@ def read_xlsx_file(file_name: str):
     """
     file = pd.read_excel(file_name)
     file_df = pd.DataFrame(file)
+    file_df['start_date'] = pd.to_datetime(file_df['start_date'])
+    file_df['end_date'] = pd.to_datetime(file_df['end_date'])
     return file_df
 
 
@@ -65,3 +69,21 @@ def save_xlsx(df, number_request: str):
     name_for_save = number_request.replace('/', '-')
     df_result = search_number_request(df, number_request)
     df_result.to_excel(f'{name_for_save}.xlsx')
+
+
+def search_by_date(data, date):
+    """
+
+    :param data:
+    :param date:
+    :return:
+    """
+    date += '%'
+    df = data
+    sql_select = '''
+    SELECT DISTINCT(number_request), product_name, series_number, start_date
+    FROM df
+    WHERE start_date LIKE '{0}' 
+    '''.format(date)
+    select_result = ps.sqldf(sql_select, locals())
+    return select_result
