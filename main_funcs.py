@@ -1,5 +1,3 @@
-import datetime
-
 import pandas as pd
 import pandasql as ps
 
@@ -59,7 +57,7 @@ def assembly_message(select_df, number_request: str):
     return text_message
 
 
-def save_xlsx(df, number_request: str):
+def save_xlsx_for_num_req(df, number_request: str):
     """
     Функция сохраняет DataFrame в xlsx
     :param df: DataFrame
@@ -71,12 +69,12 @@ def save_xlsx(df, number_request: str):
     df_result.to_excel(f'{name_for_save}.xlsx')
 
 
-def search_by_date(data, date):
+def search_by_date(data, date: str):
     """
-
-    :param data:
-    :param date:
-    :return:
+    Функция находит в xlsx файле номера заявок по дате сдачи на анализ
+    :param data: таблица результатов в DataFrame
+    :param date: дата сдачи (Пример: 2023-12-31)
+    :return: срез данных из data DataFrame
     """
     date += '%'
     df = data

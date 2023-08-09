@@ -6,7 +6,7 @@ import os
 
 from create_bot import dp, bot
 from keybords import kb_client, kb_button_menu
-from main_funcs import read_xlsx_file, search_number_request, assembly_message, save_xlsx, search_by_date
+from main_funcs import read_xlsx_file, search_number_request, assembly_message, save_xlsx_for_num_req, search_by_date
 
 
 class FSMSearch_request(StatesGroup):
@@ -36,14 +36,14 @@ async def take_number_request(message: types.Message, state: FSMContext):
         if len(text_for_mes) > 4096:
             await bot.send_message(message.from_user.id,
                                    'Слишком длинное сообщение с результатами анализов.\nБот пришлет .xlsx фаил с результатами.')
-            save_xlsx(nir, data['number_request'])
+            save_xlsx_for_num_req(nir, data['number_request'])
             name_for_open = data['number_request'].replace('/', '-')
             path = os.path.join(my_cwd, name_for_open)
             xlsx_file = open(f'{path}.xlsx', 'rb')
             await bot.send_document(message.from_user.id, xlsx_file)
         else:
             await bot.send_message(message.from_user.id, text_for_mes)
-            save_xlsx(nir, data['number_request'])
+            save_xlsx_for_num_req(nir, data['number_request'])
             name_for_open = data['number_request'].replace('/', '-')
             path = os.path.join(my_cwd, name_for_open)
             xlsx_file = open(f'{path}.xlsx', 'rb')
@@ -70,11 +70,17 @@ async def take_date(message: types.Message, state: FSMContext):
         text = 'По дате {0} было найдено:\n {1}'.format(data['date'], search_result.to_string(index=False))
         if len(text) > 4096:
             await bot.send_message(message.from_user.id, 'Слишком длинное сообщение с результатами анализов.\nБот пришлет .xlsx фаил с результатами.')
+            search_result.to_excel('slice_by_date.xlsx')
             path = os.path.join(my_cwd, 'slice_by_date')
             xlsx_file = open(f'{path}.xlsx', 'rb')
             await bot.send_document(message.from_user.id, xlsx_file)
         else:
             await bot.send_message(message.from_user.id, text)
+            search_result.to_excel('slice_by_date.xlsx')
+            path = os.path.join(my_cwd, 'slice_by_date')
+            xlsx_file = open(f'{path}.xlsx', 'rb')
+            await bot.send_document(message.from_user.id, xlsx_file)
+    os.remove('slice_by_date.xlsx')
     await state.finish()
 
 
