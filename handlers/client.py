@@ -3,10 +3,17 @@ from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
 
 import os
+import logging
 
 from create_bot import dp, bot
 from keybords import kb_client, kb_button_menu
 from main_funcs import read_xlsx_file, search_number_request, assembly_message, save_xlsx_for_num_req, search_by_date
+
+logging.basicConfig(filename='bot_log.log',
+                    filemode='a',
+                    encoding='UTF-8',
+                    level=logging.INFO,
+                    format='%(asctime)s %(message)s')
 
 
 class FSMSearch_request(StatesGroup):
@@ -33,14 +40,24 @@ async def take_number_request(message: types.Message, state: FSMContext):
         data['number_request'] = message.text
         search_result = search_number_request(nir, data['number_request'])
         text_for_mes = assembly_message(search_result, data['number_request'])
+        logging.info("Пользователь {0} предал боту номер заявки {1}."
+                     " Длинна сообщения {2}".format(message.from_user.first_name,
+                                                    data['number_request'],
+                                                    len(text_for_mes)))
         if len(text_for_mes) > 4096:
             await bot.send_message(message.from_user.id,
-                                   'Слишком длинное сообщение с результатами анализов.\nБот пришлет .xlsx фаил с результатами.')
+                                   'Слишком длинное сообщение с результатами анализов.'
+                                   '\nБот пришлет .xlsx фаил с результатами.')
             save_xlsx_for_num_req(nir, data['number_request'])
             name_for_open = data['number_request'].replace('/', '-')
             path = os.path.join(my_cwd, name_for_open)
             xlsx_file = open(f'{path}.xlsx', 'rb')
             await bot.send_document(message.from_user.id, xlsx_file)
+            os.remove(f'{name_for_open}.xlsx')
+        elif len(search_result) == 0:
+            await bot.send_message(message.from_user.id, f'По номеру заявки: {data["number_request"]} '
+                                                         f'ничего не нашлось.\n'
+                                                         f'Проверьте корректность номера или анализ еще не готов.')
         else:
             await bot.send_message(message.from_user.id, text_for_mes)
             save_xlsx_for_num_req(nir, data['number_request'])
@@ -48,7 +65,7 @@ async def take_number_request(message: types.Message, state: FSMContext):
             path = os.path.join(my_cwd, name_for_open)
             xlsx_file = open(f'{path}.xlsx', 'rb')
             await bot.send_document(message.from_user.id, xlsx_file)
-    os.remove(f'{name_for_open}.xlsx')
+            os.remove(f'{name_for_open}.xlsx')
     await state.finish()
 
 
@@ -68,26 +85,37 @@ async def take_date(message: types.Message, state: FSMContext):
         data['date'] = message.text
         search_result = search_by_date(data=nir, date=data['date'])
         text = 'По дате {0} было найдено:\n {1}'.format(data['date'], search_result.to_string(index=False))
+        logging.info('Пользователь {0} передал боту дату {1}. '
+                     'Длинна сообщения {2}.'.format(message.from_user.first_name,
+                                                    data['date'],
+                                                    len(text)))
         if len(text) > 4096:
-            await bot.send_message(message.from_user.id, 'Слишком длинное сообщение с результатами анализов.\nБот пришлет .xlsx фаил с результатами.')
+            await bot.send_message(message.from_user.id, 'Слишком длинное сообщение с результатами анализов.'
+                                                         '\nБот пришлет .xlsx фаил с результатами.')
             search_result.to_excel('slice_by_date.xlsx')
             path = os.path.join(my_cwd, 'slice_by_date')
             xlsx_file = open(f'{path}.xlsx', 'rb')
             await bot.send_document(message.from_user.id, xlsx_file)
+            os.remove('slice_by_date.xlsx')
+        elif len(search_result) == 0:
+            await bot.send_message(message.from_user.id,
+                                   f'По дате: {data["date"]} ничего не нашлось.\n'
+                                   f'Проверьте корректность даты - укажите другую дату.')
         else:
             await bot.send_message(message.from_user.id, text)
             search_result.to_excel('slice_by_date.xlsx')
             path = os.path.join(my_cwd, 'slice_by_date')
             xlsx_file = open(f'{path}.xlsx', 'rb')
             await bot.send_document(message.from_user.id, xlsx_file)
-    os.remove('slice_by_date.xlsx')
+            os.remove('slice_by_date.xlsx')
     await state.finish()
 
 
 # @dp.message_handler(commands=['start'])
 async def command_start(message: types.Message):
     await bot.send_message(message.from_user.id,
-                           f'Привет, {message.from_user.first_name}! Воспользуйся кнопками меню для упрощенного взаимодействия c ботом.',
+                           f'Привет, {message.from_user.first_name}! '
+                           f'Воспользуйся кнопками меню для упрощенного взаимодействия c ботом.',
                            reply_markup=kb_client)
 
 
@@ -98,9 +126,11 @@ async def command_help(message: types.Message):
     ->/Contacts - Список номеров всех сотрудников ОКК. 
     
     Основные функции бота
-    ->/Menu->/Search_result - Поиск результатов по номеру заявки НИР, в ответ бот пришлет сообщение и .xlsx файл с результатами.
+    ->/Menu->/Search_result - Поиск результатов по номеру заявки НИР, в ответ бот пришлет сообщение и .xlsx файл с 
+    результатами.
     Пример номера заявки, который нужно написать боту - 10-001/01-23
-    ->/Menu->/Search_by_date - Поиск заявок по дате, в ответ бот пришлет сообщение и .xlsx файл с результатами.(функция в разработке)
+    ->/Menu->/Search_by_date - Поиск заявок по дате, в ответ бот пришлет сообщение и .xlsx файл с номерами заявок, 
+    названием продукта и серией.
     Пример даты, который нужно написать боту - 2023-12-31
     
     ***
