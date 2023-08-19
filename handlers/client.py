@@ -7,7 +7,12 @@ import logging
 
 from create_bot import dp, bot
 from keybords import kb_client, kb_button_menu
-from main_funcs import read_xlsx_file, search_number_request, assembly_message, save_xlsx_for_num_req, search_by_date
+from main_funcs import read_xlsx_file,\
+    search_number_request,\
+    assembly_message,\
+    save_xlsx_for_num_req,\
+    search_by_date,\
+    search_result_file
 
 logging.basicConfig(filename='bot_log.log',
                     filemode='a',
@@ -38,6 +43,7 @@ async def take_number_request(message: types.Message, state: FSMContext):
     my_cwd = os.getcwd()
     async with state.proxy() as data:
         data['number_request'] = message.text
+        list_file = search_result_file(number_request=data['number_request'])
         search_result = search_number_request(nir, data['number_request'])
         text_for_mes = assembly_message(search_result, data['number_request'])
         logging.info("Пользователь {0} предал боту номер заявки {1}."
@@ -66,6 +72,11 @@ async def take_number_request(message: types.Message, state: FSMContext):
             xlsx_file = open(f'{path}.xlsx', 'rb')
             await bot.send_document(message.from_user.id, xlsx_file)
             os.remove(f'{name_for_open}.xlsx')
+            if list_file is not None:
+                media = types.MediaGroup()
+                for file_path in list_file:
+                    media.attach_document(types.InputFile(file_path))
+                await bot.send_media_group(message.from_user.id, media=media)
     await state.finish()
 
 
@@ -127,7 +138,7 @@ async def command_help(message: types.Message):
     
     Основные функции бота
     ->/Menu->/Search_result - Поиск результатов по номеру заявки НИР, в ответ бот пришлет сообщение и .xlsx файл с 
-    результатами.
+    результатами и хроматограммы анализа.
     Пример номера заявки, который нужно написать боту - 10-001/01-23
     ->/Menu->/Search_by_date - Поиск заявок по дате, в ответ бот пришлет сообщение и .xlsx файл с номерами заявок, 
     названием продукта и серией.
