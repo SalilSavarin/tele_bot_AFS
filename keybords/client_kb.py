@@ -14,7 +14,7 @@ kb_client.\
 
 # button_menu
 button_search_number_request = KeyboardButton('/Search_result')
-button_search_number_request_full_info = KeyboardButton('/Advanced_Search_result')
+button_search_number_request_full_info = KeyboardButton('/Add_request_to_tracking')
 button_search_by_date = KeyboardButton('/Search_by_date')
 button_back = KeyboardButton('/Back')
 

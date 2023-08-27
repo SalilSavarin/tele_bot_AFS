@@ -1,4 +1,5 @@
 import os
+import sqlite3
 
 import pandas as pd
 import pandasql as ps
@@ -93,10 +94,10 @@ def search_result_file(number_request):
     """
     Функция находит имена файлов связанных с анализом по номеру заявки.
     :param number_request: номер заявки от пользователя.
-    :return: list с путями к файам
+    :return: list с путями к файлам
     """
     list_path = list()
-    path = os.path.join(os.path.dirname(__file__), 'C:\\Users\yan-s\Desktop\MyRepo\\bot_AFS\HPLC')
+    path = 'C:\\Users\yan-s\Desktop\MyRepo\\bot_AFS\HPLC'
     number_request = number_request.replace('/', '-')
     folder_list = os.listdir(path=path)
     for folder_name in folder_list:
@@ -110,3 +111,20 @@ def search_result_file(number_request):
     if not list_path:
         return
     return list_path
+
+
+def checking_repeating_objects(number_request, user_id, conn):
+    """
+    Функция проверит на повторяющиеся номера заявок у одного пользователя.
+    :param number_request: номер заявки от пользователя.
+    :param user_id: telegram id пользователя
+    :return: True или False
+    """
+    req = '''SELECT telegram_id, number_requests FROM users_requests
+            WHERE number_requests LIKE ? AND telegram_id = ?'''
+    cursor = conn.execute(req, (number_request, user_id,))
+    length_result = len(cursor.fetchall())
+    if length_result > 0:
+        return False
+    else:
+        return True

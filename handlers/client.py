@@ -1,3 +1,6 @@
+import datetime
+import sqlite3
+
 from aiogram import types, Dispatcher
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
@@ -5,14 +8,15 @@ from aiogram.dispatcher.filters.state import State, StatesGroup
 import os
 import logging
 
-from create_bot import dp, bot
+from create_bot import bot
 from keybords import kb_client, kb_button_menu
-from main_funcs import read_xlsx_file,\
-    search_number_request,\
-    assembly_message,\
-    save_xlsx_for_num_req,\
-    search_by_date,\
-    search_result_file
+from utils.main_funcs import read_xlsx_file, \
+    search_number_request, \
+    assembly_message, \
+    save_xlsx_for_num_req, \
+    search_by_date, \
+    search_result_file,\
+    checking_repeating_objects
 
 logging.basicConfig(filename='bot_log.log',
                     filemode='a',
@@ -27,6 +31,10 @@ class FSMSearch_request(StatesGroup):
 
 class FSMSearch_by_date(StatesGroup):
     date = State()
+
+
+class FSMadd_requests_to_tracking(StatesGroup):
+    number_request = State()
 
 
 # Начало поиска простого поиска результата по номеру заявки
@@ -122,6 +130,36 @@ async def take_date(message: types.Message, state: FSMContext):
     await state.finish()
 
 
+# @dp.message_handler(commands=['Add_request_to_tracking'])
+async def command_add_requests_to_tracking(message: types.Message):
+    await FSMadd_requests_to_tracking.number_request.set()
+    await bot.send_message(message.from_user.id, 'Введите номер заявки для отслеживания.\n'
+                                                 'Пример номера заявки - 10-001/01-23')
+
+
+async def start_tracking(message: types.Message, state: FSMContext):
+    date = datetime.date.today()
+    async with state.proxy() as data:
+        data['number_request'] = message.text
+        conn = sqlite3.connect(r'C:\Users\yan-s\Desktop\MyRepo\bot_AFS\database\tracking_requests.db')
+        check = checking_repeating_objects(data['number_request'], message.from_user.id, conn)
+        if check is False:
+            await bot.send_message(message.from_user.id,
+                                   'Вами уже была добавлена заявка {0} в отслеживание'.format(data['number_request']))
+            await state.finish()
+            return
+        cursor = conn.cursor()
+        req = '''INSERT INTO users_requests 
+        (telegram_id, user_name, number_requests, date)
+        VALUES (?, ?, ?, ?)'''
+        cursor.execute(req, (message.from_user.id, message.from_user.first_name, data['number_request'], date))
+        conn.commit()
+        conn.close()
+        await bot.send_message(message.from_user.id,
+                               'Заявка {0} была успешно добавлена для отслеживания'.format(data['number_request']))
+    await state.finish()
+
+
 # @dp.message_handler(commands=['start'])
 async def command_start(message: types.Message):
     await bot.send_message(message.from_user.id,
@@ -143,6 +181,8 @@ async def command_help(message: types.Message):
     ->/Menu->/Search_by_date - Поиск заявок по дате, в ответ бот пришлет сообщение и .xlsx файл с номерами заявок, 
     названием продукта и серией.
     Пример даты, который нужно написать боту - 2023-12-31
+    ->/Menu->/Add_request_to_tracking - Добавляет номер заявки в отслеживание. По готовности бот пришлет сообщение и 
+    .xlsx файл с результатами. 
     
     ***
     Если сообщение будет превышать 4096 символов, то бот присылает только .xlsx файл
@@ -151,6 +191,7 @@ async def command_help(message: types.Message):
 
 # @dp.message_handler(commands=['contacts'])
 async def command_contact(message: types.Message):
+    print(message.chat.id)
     await bot.send_message(message.from_user.id, 'Савицкий Ян +79998887766')
 
 
@@ -174,3 +215,5 @@ def register_handlers_client(dp: Dispatcher):
     dp.register_message_handler(take_number_request, state=FSMSearch_request.number_request)
     dp.register_message_handler(command_search_by_date, commands=['Search_by_date'], state=None)
     dp.register_message_handler(take_date, state=FSMSearch_by_date.date)
+    dp.register_message_handler(command_add_requests_to_tracking, commands=['Add_request_to_tracking'])
+    dp.register_message_handler(start_tracking, state=FSMadd_requests_to_tracking.number_request)
